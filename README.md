@@ -59,10 +59,10 @@ D --> E
 
 E --> F[Multi-Round Debate Loop]
 
-F --> G[Text-to-Speech (TTS)]
+F --> G[Text-to-Speech TTS]
 F --> H[AI Judge]
 
-G --> I[Audio Output (.mp3)]
+G --> I[Audio Output .mp3]
 H --> J[Score & Evaluation]
 
 I --> K[Streamlit Display]
