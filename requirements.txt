@@ -4,3 +4,4 @@ python-dotenv
 gtts
 pyttsx3
 edge_tts
+mutagen
