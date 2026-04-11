@@ -86,7 +86,7 @@ def speak_with_highlight(text, placeholder, voice="en-US-GuyNeural", rate="+10%"
     )
 
     # Time per word = total duration / word count
-    time_per_word = max((duration / len(words)) * 1.2, 0.08)
+    time_per_word = max((duration / len(words)) * 1.2, 0.06)
     time.sleep(0.3)
 
     # Highlight each word one by one in sync with audio
