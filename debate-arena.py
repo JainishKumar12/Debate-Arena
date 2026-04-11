@@ -1,179 +1,193 @@
-import streamlit as st 
-import asyncio 
+import streamlit as st
 from groq import Groq
-import os 
 from dotenv import load_dotenv
-from gtts import gTTS
+import os, base64, tempfile, pyttsx3 
+import asyncio
+import edge_tts
+import time
+from mutagen.mp3 import MP3
 
 load_dotenv()
-print("KEY FOUND:", os.getenv("GROQ_API_KEY"))
-api_key= os.getenv("GROQ_API_KEY")
-client = Groq(api_key=api_key )
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+st.set_page_config(page_title="Debate Arena ⚔️", layout="centered")
 
-def agent(topic , side , history):# topic   = the debate subject e.g. "AI will replace jobs",side    = either "FOR" or "AGAINST", history = list of previous arguments (like chat history ) 
+
+def agent(topic, side, history):
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": f"""You are a passionate debater arguing {side} the topic: {topic}.
+Be persuasive, use real-world examples, challenge the opponent's weakest point.
+Keep to 2-3 short punchy paragraphs. Never concede ground."""},
+            *history
+        ]
+    )
+    return response.choices[0].message.content
+
+
+def judge(topic, pro, con, round_num):
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": "You are a strict debate judge. Be specific, never vague."},
+            {"role": "user", "content": f"""Topic: {topic} | Round: {round_num}
+FOR: {pro}
+AGAINST: {con}
+Respond EXACTLY in this format:
+FOR SCORE: X/10
+AGAINST SCORE: X/10
+ROUND WINNER: FOR or AGAINST
+ROUND SUMMARY: one sentence"""}
+        ]
+    )
+    text = response.choices[0].message.content
+    def extract(label):
+        for line in text.splitlines():
+            if line.strip().startswith(label):
+                return line.replace(label, "").strip()
+        return ""
+    return {
+        "for_score":     extract("FOR SCORE:"),
+        "against_score": extract("AGAINST SCORE:"),
+        "winner":        extract("ROUND WINNER:"),
+        "summary":       extract("ROUND SUMMARY:")
+    }
+
+
+def get_windows_voices():
+    """Return available voice IDs from pyttsx3."""
+    engine = pyttsx3.init()
+    voices = engine.getProperty('voices')
+    engine.stop()
+    return voices
+
+
+def speak_with_highlight(text, placeholder, voice="en-US-GuyNeural", rate="+10%"):
+    words = text.split()
     
-    system_prompt = f"""You are a passionate debater arguing {side} the topic.
-    Topic: {topic}
-    Be persuasive and confident in your position.
-    Directly challenge the opponent's weakest argument with logic and evidence.
-    Use real world examples where possible.
-    Keep your argument to 2-3 short punchy paragraphs.
-    Never concede ground."""
+    # Generate full audio first
+    async def _gen():
+        communicate = edge_tts.Communicate(text, voice=voice, rate=rate)
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            tmp_path = f.name
+        await communicate.save(tmp_path)
+        return tmp_path
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            *history # unpack all previous arguments like *args 
+    tmp_path = asyncio.run(_gen())
+    duration = MP3(tmp_path).info.length
+    audio_b64 = base64.b64encode(open(tmp_path, "rb").read()).decode()
+    os.unlink(tmp_path)
 
-        ]
+    # Autoplay the full audio
+    st.markdown(
+        f'<audio autoplay style="display:none">'
+        f'<source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3"></audio>',
+        unsafe_allow_html=True
     )
 
-    return response.choices[0].message.content
+    # Time per word = total duration / word count
+    time_per_word = duration / len(words)
 
-def run_debate(topic,rounds, col1, col2 ):
-    history = []
-    results=[]
-    for round_num in range(1 , rounds+1):
-        st.markdown(f"### Round {round_num} ")
-        with col1:
-            with st.spinner("FOR is arguing..."):
-                pro_argument = agent(topic, "FOR", history)
+    # Highlight each word one by one in sync with audio
+    for i in range(len(words)):
+        highlighted = " ".join(
+            f"**:orange[{w}]**" if j == i else w
+            for j, w in enumerate(words)
+        )
+        placeholder.markdown(highlighted)
+        time.sleep(time_per_word)
 
-            st.markdown(f"""
-            <div style="background:#1a0000; border-left:3px solid #e03c3c; 
-            padding:15px; border-radius:8px; margin:10px 0">
-            <b style="color:#e03c3c">Round {round_num}</b><br><br>
-            {pro_argument}
-            </div>
-            """, unsafe_allow_html=True)
-            
-            speak(pro_argument , "pro")
+    # Show plain text when done
+    placeholder.markdown(text)
 
-        history.append({
-            "role": "user",
-            "content": f"FOR side argument: {pro_argument}"
-        })
-        with col2:
-            with st.spinner("AGAINST is arguing..."):
-                con_argument = agent(topic, "AGAINST" , history)
+# ── Session state ──────────────────────────────────────────
+if "started" not in st.session_state:
+    st.session_state.started = False
 
-            st.markdown(f"""
-            <div style="background:#00001a; border-left:3px solid #3c8ee0; 
-            padding:15px; border-radius:8px; margin:10px 0">
-            <b style="color:#3c8ee0">Round {round_num}</b><br><br>
-            {con_argument}
-            </div>
-            """, unsafe_allow_html=True)
+# ── Setup screen ───────────────────────────────────────────
+st.title("⚔️ Debate Arena")
+st.caption("Two AIs argue it out. You watch.")
 
-            speak(con_argument , "con")
+if not st.session_state.started:
+    topic  = st.text_input("Debate topic", placeholder="e.g. Social media does more harm than good")
+    rounds = st.select_slider("Rounds", options=[2, 3, 4, 5], value=3)
 
-        history.append({
-            "role": "user",
-            "content": f"AGAINST side argument: {con_argument}"
-        })
+    if st.button("Start Debate", type="primary"):
+        if not topic:
+            st.error("Enter a topic first.")
+        else:
+            st.session_state.topic   = topic
+            st.session_state.rounds  = rounds
+            st.session_state.started = True
+            st.rerun()
 
-        with st.spinner("Judge is Scoring..."):
-            judgment = judge(topic, pro_argument , con_argument, round_num)
+# ── Debate screen ──────────────────────────────────────────
+else:
+    topic  = st.session_state.topic
+    rounds = st.session_state.rounds
 
-        st.markdown(f"""
-        <div style="background:#1a1a00; border:1px solid #f0c040;
-        padding:15px; border-radius:8px; margin:10px 0; text-align:center">
-        <b style="color:#f0c040">⚖️ JUDGE — Round {round_num}</b><br><br>
-        {judgment}
-        </div>
-        """, unsafe_allow_html=True)
+    st.subheader(f"📢 Topic: _{topic}_")
+    st.divider()
+
+    history  = []
+    pro_wins = 0
+    con_wins = 0
+
+    for r in range(1, rounds + 1):
+        st.markdown(f"### Round {r} of {rounds}")
+
+        with st.spinner("🤖 FOR side is thinking..."):
+            pro = agent(topic, "FOR", history)
+        history.append({"role": "user", "content": f"FOR: {pro}"})
+
+        with st.chat_message("assistant", avatar="🤖"):
+            st.markdown(f"**FOR** — Round {r}")
+            pro_placeholder = st.empty()
+            pro_placeholder.markdown(pro)
+
+        with st.spinner("👾 AGAINST side is thinking..."):
+            con = agent(topic, "AGAINST", history)
+        history.append({"role": "user", "content": f"AGAINST: {con}"})
+
+        with st.chat_message("user", avatar="👾"):
+            st.markdown(f"**AGAINST** — Round {r}")
+            con_placeholder = st.empty()
+            con_placeholder.markdown(con)
+
+        speak_with_highlight(pro, pro_placeholder, voice="en-US-GuyNeural", rate="+10%")
+        speak_with_highlight(con, con_placeholder, voice="en-GB-RyanNeural", rate="+8%")
+        
+        # Verdict
+        with st.spinner("⚖️ Judge is scoring..."):
+            v = judge(topic, pro, con, r)
+
+        winner_label = "🤖 FOR" if v["winner"].strip().upper() == "FOR" else "👾 AGAINST"
+        if v["winner"].strip().upper() == "FOR":
+            pro_wins += 1
+        else:
+            con_wins += 1
+
+        with st.expander(f"⚖️ Round {r} Verdict — Winner: {winner_label}"):
+            col1, col2 = st.columns(2)
+            col1.metric("FOR score",     v["for_score"])
+            col2.metric("AGAINST score", v["against_score"])
+            st.info(v["summary"])
 
         st.divider()
 
-        results.append({
-            "round": round_num,
-            "pro": pro_argument,
-            "con": con_argument,
-            "judgment": judgment
-        })
+    # Final result
+    st.markdown("## 🏆 Final Result")
+    col1, col2 = st.columns(2)
+    col1.metric("🤖 FOR wins",     pro_wins)
+    col2.metric("👾 AGAINST wins", con_wins)
 
-    st.markdown("""
-    <div style="background:#0d0d0f; border:2px solid #f0c040;
-    padding:20px; border-radius:12px; text-align:center">
-    <h2 style="color:#f0c040">🏆 Debate Complete!</h2>
-    <p style="color:#f0ede8">Check the judge scores above to see who won!</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-    return results
-
-def judge(topic, pro_argument , con_argument , round_num):
-    judge_prompt = f"""you are a strict fair debate judge.
-    topic : {topic}
-    Round: {round_num}
-
-    FOR side argued:
-    {pro_argument}
-
-    AGAINST side argued:
-    {con_argument}
-
-    Score EACH debater out of 10 on these 3 things:
-    1. Logic — how well structured and rational is the argument?
-    2. Evidence — did they use real facts, examples, statistics?
-    3. Persuasiveness — how convincing was the overall argument?
-
-    Your response MUST follow this exact format:
-    FOR SCORE: X/10
-    FOR REASONING: one sentence why
-
-    AGAINST SCORE: X/10
-    AGAINST REASONING: one sentence why
-
-    ROUND WINNER: FOR or AGAINST
-    ROUND SUMMARY: one sentence describing the key clash"""
-
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": "You are a strict debate judge .Never be vague , Always give specific reasons tied to the actual arguments made."},
-            {"role": "user", "content": judge_prompt}
-        ]
-    )
-
-    return response.choices[0].message.content
-
-def speak(text, agent_side):
-    if agent_side == "pro":
-        tts = gTTS(text=text , lang="en", tld="co.uk")
-        filename= "pro_argument.mp3"
+    if pro_wins > con_wins:
+        st.success("🤖 **FOR side wins the debate!**")
+    elif con_wins > pro_wins:
+        st.success("👾 **AGAINST side wins the debate!**")
     else:
-        tts = gTTS(text=text, lang="en" , tld="com.au")
-        filename= "con_argument.mp3"
+        st.info("⚖️ **It's a draw!**")
 
-    # save the audio file
-    tts.save(filename)
-    # play in the browser
-    st.audio(filename)
-
-st.title(" Debate Arena")
-st.write("AI vs AI . Passionate Arguments . You Score Each Round")
-
-topic = st.text_input("Enter debate topic", placeholder="e.g. AI will replace most jobs")
-rounds = st.slider("Number of rounds" , min_value=2, max_value=5, value=3)
-
-if st.button("Start Debate"):
-    if not topic:
-        st.error("Please enter a topic first!")
-    else:
-        st.divider()
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.markdown("### FOR")
-            st.markdown(f"*Arguing FOR: {topic}*")
-
-        with col2:
-            st.markdown("### AGAINST")
-            st.markdown(f"*Arguing AGAINST: {topic}*")
-
-        st.divider()
-        run_debate(topic, rounds , col1 , col2)
+    if st.button("🔄 New Debate"):
+        st.session_state.started = False
+        st.rerun()

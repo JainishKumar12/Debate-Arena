@@ -1,0 +1,127 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#050510;font-family:'Share Tech Mono',monospace;color:#e0e0ff}
+.arena{background:#050510;padding:16px;min-height:600px}
+.header{text-align:center;padding:12px 0 16px;border-bottom:1px solid #1a1a3a;margin-bottom:16px}
+.title{font-family:'Orbitron',sans-serif;font-size:28px;font-weight:900;letter-spacing:4px;color:#fff;text-shadow:0 0 20px #a855f7,0 0 40px #7c3aed}
+.subtitle{font-size:10px;letter-spacing:6px;color:#6b6b9a;margin-top:4px}
+.fighters{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;margin-bottom:16px;align-items:center}
+.fighter-card{border-radius:12px;padding:12px;text-align:center}
+.fighter-card.pro{background:linear-gradient(135deg,#1a0020,#0d0018);border:1px solid #ff00aa;box-shadow:0 0 15px rgba(255,0,170,0.3)}
+.fighter-card.con{background:linear-gradient(135deg,#00101a,#000d18);border:1px solid #00aaff;box-shadow:0 0 15px rgba(0,170,255,0.3)}
+.fighter-avatar{width:56px;height:56px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:24px}
+.pro .fighter-avatar{background:rgba(255,0,170,0.15);border:2px solid #ff00aa}
+.con .fighter-avatar{background:rgba(0,170,255,0.15);border:2px solid #00aaff}
+.fighter-name{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px}
+.pro .fighter-name{color:#ff00aa}
+.con .fighter-name{color:#00aaff}
+.fighter-side{font-size:9px;letter-spacing:3px;margin-top:2px;color:#6b6b9a}
+.hp-bar{height:4px;border-radius:2px;margin-top:8px;background:#1a1a3a}
+.hp-fill-pro{height:100%;width:72%;border-radius:2px;background:#ff00aa;box-shadow:0 0 8px #ff00aa}
+.hp-fill-con{height:100%;width:58%;border-radius:2px;background:#00aaff;box-shadow:0 0 8px #00aaff}
+.vs-section{text-align:center}
+.vs-text{font-family:'Orbitron',sans-serif;font-size:20px;font-weight:900;color:#f0c040;text-shadow:0 0 15px #f0c040}
+.round-text{font-size:9px;letter-spacing:3px;color:#6b6b9a;margin-top:4px}
+.arguments{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.arg-box{border-radius:10px;padding:12px}
+.arg-box.pro{background:#0d0015;border:1px solid rgba(255,0,170,0.4)}
+.arg-box.con{background:#00080f;border:1px solid rgba(0,170,255,0.4)}
+.arg-header{font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:2px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.pro .arg-header{color:#ff00aa}
+.con .arg-header{color:#00aaff}
+.arg-dot{width:6px;height:6px;border-radius:50%}
+.pro .arg-dot{background:#ff00aa;box-shadow:0 0 6px #ff00aa}
+.con .arg-dot{background:#00aaff;box-shadow:0 0 6px #00aaff}
+.arg-text{font-size:11px;line-height:1.6;color:#b0b0d0}
+.audio-bar{display:flex;align-items:center;gap:6px;margin-top:8px;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,0.03)}
+.play-btn{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;border:none;cursor:pointer}
+.pro .play-btn{background:rgba(255,0,170,0.2);color:#ff00aa}
+.con .play-btn{background:rgba(0,170,255,0.2);color:#00aaff}
+.audio-waves{display:flex;gap:2px;align-items:center}
+.wave{width:3px;border-radius:2px;animation:wave 0.8s ease-in-out infinite}
+.wave:nth-child(2){animation-delay:0.1s;height:8px}
+.wave:nth-child(3){animation-delay:0.2s;height:14px}
+.wave:nth-child(4){animation-delay:0.3s;height:10px}
+.wave:nth-child(5){animation-delay:0.4s;height:6px}
+.pro .wave{background:#ff00aa;height:6px}
+.con .wave{background:#00aaff;height:6px}
+@keyframes wave{0%,100%{transform:scaleY(0.5)}50%{transform:scaleY(1.5)}}
+.score-card{border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid rgba(240,192,64,0.4);background:linear-gradient(135deg,#0d0d00,#12100a);text-align:center}
+.score-title{font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:3px;color:#f0c040;margin-bottom:12px}
+.score-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:10px}
+.score-item{text-align:center}
+.score-num{font-family:'Orbitron',sans-serif;font-size:28px;font-weight:900}
+.score-pro .score-num{color:#ff00aa;text-shadow:0 0 15px #ff00aa}
+.score-con .score-num{color:#00aaff;text-shadow:0 0 15px #00aaff}
+.score-label{font-size:9px;letter-spacing:2px;color:#6b6b9a;margin-top:2px}
+.winner-badge{display:inline-block;padding:4px 14px;border-radius:20px;font-size:10px;letter-spacing:2px;font-family:'Orbitron',sans-serif;background:rgba(255,0,170,0.15);color:#ff00aa;border:1px solid rgba(255,0,170,0.4)}
+.judge-text{font-size:11px;line-height:1.6;color:#8888aa;margin-top:10px;text-align:left;border-top:1px solid #1a1a2a;padding-top:10px}
+</style>
+
+<div class="arena">
+  <div class="header">
+    <div class="title">DEBATE ARENA</div>
+    <div class="subtitle">CYBERPUNK EDITION · AI VS AI</div>
+  </div>
+
+  <div class="fighters">
+    <div class="fighter-card pro">
+      <div class="fighter-avatar">🤖</div>
+      <div class="fighter-name">NEXUS-7</div>
+      <div class="fighter-side">FOR THE MOTION</div>
+      <div class="hp-bar"><div class="hp-fill-pro"></div></div>
+    </div>
+    <div class="vs-section">
+      <div class="vs-text">VS</div>
+      <div class="round-text">ROUND 1 / 3</div>
+    </div>
+    <div class="fighter-card con">
+      <div class="fighter-avatar">👾</div>
+      <div class="fighter-name">CIPHER-X</div>
+      <div class="fighter-side">AGAINST THE MOTION</div>
+      <div class="hp-bar"><div class="hp-fill-con"></div></div>
+    </div>
+  </div>
+
+  <div class="arguments">
+    <div class="arg-box pro">
+      <div class="arg-header"><div class="arg-dot"></div>NEXUS-7 · ROUND 1</div>
+      <div class="arg-text">AI will absolutely replace most jobs within a decade. The evidence is already here — autonomous systems are outperforming humans in radiology, legal research, and financial analysis. This is not speculation, it's an industrial revolution happening in real time.</div>
+      <div class="audio-bar">
+        <button class="play-btn">▶</button>
+        <div class="audio-waves">
+          <div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div>
+        </div>
+      </div>
+    </div>
+    <div class="arg-box con">
+      <div class="arg-header"><div class="arg-dot"></div>CIPHER-X · ROUND 1</div>
+      <div class="arg-text">History proves you wrong every single time. The printing press, the loom, the computer — all were supposed to end work. Instead they created millions of new jobs. Human creativity, empathy, and judgment cannot be replicated by any machine.</div>
+      <div class="audio-bar">
+        <button class="play-btn">▶</button>
+        <div class="audio-waves">
+          <div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="score-card">
+    <div class="score-title">⚖ ROUND 1 VERDICT</div>
+    <div class="score-grid">
+      <div class="score-item score-pro">
+        <div class="score-num">7</div>
+        <div class="score-label">NEXUS-7</div>
+      </div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:14px;color:#3a3a5a">VS</div>
+      <div class="score-item score-con">
+        <div class="score-num">8</div>
+        <div class="score-label">CIPHER-X</div>
+      </div>
+    </div>
+    <div class="winner-badge">ROUND WINNER: CIPHER-X</div>
+    <div class="judge-text">CIPHER-X used stronger historical evidence and directly dismantled NEXUS-7's core claim. NEXUS-7 made bold assertions but lacked specific data to back them up.</div>
+  </div>
+</div>
